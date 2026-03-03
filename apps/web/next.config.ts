@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       process.env.COMMIT_REF ??
       process.env.VERCEL_GIT_COMMIT_SHA ??
       "local",
+    NEXT_PUBLIC_SIMULATION_URL:
+      process.env.NEXT_PUBLIC_SIMULATION_URL ?? "http://localhost:3001",
   },
 };
 

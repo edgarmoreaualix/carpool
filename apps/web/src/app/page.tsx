@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
+  const simulationUrl = process.env.NEXT_PUBLIC_SIMULATION_URL ?? "http://localhost:3001";
+
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 sm:py-12">
       <section className="grid gap-5 lg:grid-cols-2 lg:items-center">
@@ -31,9 +33,15 @@ export default function Home() {
           <CardContent>
             <iframe
               title="Simulation Covoiturage"
-              src="http://localhost:3001"
+              src={simulationUrl}
               className="h-[360px] w-full rounded-md border border-border"
             />
+            <div className="mt-3 text-sm text-muted-foreground">
+              <Link href={simulationUrl} target="_blank" className="text-primary underline underline-offset-4">
+                Ouvrir la simulation dans un nouvel onglet
+              </Link>
+              . Si l&apos;aperçu est vide, vérifiez que l&apos;app simulation tourne sur l&apos;URL configurée.
+            </div>
           </CardContent>
         </Card>
       </section>
