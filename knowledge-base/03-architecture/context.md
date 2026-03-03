@@ -10,10 +10,10 @@
 | **Maps** | MapLibre GL JS + PMTiles | Fully open-source, no API key, self-hosted tiles |
 | **Map tiles** | Protomaps (PMTiles on CDN) | Free, fast, offline-capable |
 | **Backend** | Next.js API routes + tRPC | Type-safe end-to-end, no separate server needed for MVP |
-| **Database** | PostgreSQL + PostGIS | Best geospatial support, proven at scale |
-| **ORM** | Drizzle ORM | Type-safe, lightweight, great DX |
+| **Database** | SQLite (better-sqlite3) | Zero-config, file-based, no external service needed |
+| **ORM** | Drizzle ORM (better-sqlite3) | Type-safe, lightweight, great DX |
 | **Auth** | Better Auth | Simple, self-hosted, no vendor lock-in |
-| **Hosting** | Vercel (frontend) + Supabase (DB) | Free tier generous, instant deploys |
+| **Hosting** | Netlify | Free tier generous, instant deploys, serverless functions |
 | **Simulation** | TypeScript + D3.js + deck.gl | Runs in browser, beautiful visualizations |
 | **Matching engine** | Pure TypeScript library | No dependencies, testable, portable |
 | **Notifications** | Resend (email) | Simple API, free tier |
@@ -47,7 +47,7 @@
 │       └──────────────┬───────────────────┘                │
 │                      │                                    │
 │       ┌──────────────┴───────────────────┐                │
-│       │     PostgreSQL + PostGIS          │                │
+│       │        SQLite (file-based)        │                │
 │       │  ┌──────┐ ┌────────┐ ┌────────┐  │                │
 │       │  │Users │ │Schedules│ │Groups  │  │                │
 │       │  └──────┘ └────────┘ └────────┘  │                │
@@ -55,67 +55,75 @@
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Database Schema (Core Tables)
+## Database Schema (Core Tables — SQLite)
+
+All geospatial math is done in TypeScript (packages/geo/), not in the database.
+Coordinates stored as plain REAL columns (lat/lng).
 
 ```sql
 -- Users
 CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,                    -- UUID generated in app
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  home_location GEOGRAPHY(POINT, 4326) NOT NULL,
-  work_location GEOGRAPHY(POINT, 4326) NOT NULL,
-  has_car BOOLEAN DEFAULT false,
-  max_passengers INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  home_lat REAL NOT NULL,
+  home_lng REAL NOT NULL,
+  work_lat REAL NOT NULL,
+  work_lng REAL NOT NULL,
+  commune TEXT NOT NULL,
+  has_car INTEGER NOT NULL DEFAULT 0,     -- 0/1 boolean
+  max_passengers INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Corridors (predefined routes)
 CREATE TABLE corridors (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,                    -- "Ligné → Nantes"
-  route GEOGRAPHY(LINESTRING, 4326),     -- The road geometry
-  city_destination TEXT NOT NULL,         -- "Nantes"
-  villages TEXT[] NOT NULL               -- ["Ligné", "Saint-Mars-du-Désert", "Carquefou"]
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  city_destination TEXT NOT NULL,
+  route_geojson TEXT NOT NULL,            -- GeoJSON LineString as JSON string
+  total_distance_km REAL NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Weekly schedule entries
 CREATE TABLE schedule_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  week_start DATE NOT NULL,
-  day_of_week INTEGER NOT NULL,          -- 0=Mon, 4=Fri
-  departure_time TIME NOT NULL,
-  tolerance_minutes INTEGER DEFAULT 15,
-  return_time TIME NOT NULL,
-  return_tolerance_minutes INTEGER DEFAULT 15,
-  is_active BOOLEAN DEFAULT true,
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start TEXT NOT NULL,               -- ISO date "2026-03-09"
+  day_of_week INTEGER NOT NULL,           -- 0=Mon, 4=Fri
+  departure_time TEXT NOT NULL,           -- "07:30"
+  tolerance_minutes INTEGER NOT NULL DEFAULT 15,
+  return_time TEXT NOT NULL,
+  return_tolerance_minutes INTEGER NOT NULL DEFAULT 15,
+  is_active INTEGER NOT NULL DEFAULT 1,
   UNIQUE(user_id, week_start, day_of_week)
 );
 
 -- Matched carpool groups
 CREATE TABLE carpool_groups (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  corridor_id UUID REFERENCES corridors(id),
-  week_start DATE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id TEXT PRIMARY KEY,
+  corridor_id TEXT NOT NULL REFERENCES corridors(id),
+  week_start TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Group memberships with driver assignments
 CREATE TABLE group_memberships (
-  group_id UUID REFERENCES carpool_groups(id),
-  user_id UUID REFERENCES users(id),
+  id TEXT PRIMARY KEY,
+  group_id TEXT NOT NULL REFERENCES carpool_groups(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   day_of_week INTEGER NOT NULL,
-  role TEXT NOT NULL,                     -- 'driver' | 'passenger'
+  role TEXT NOT NULL,                      -- 'driver' | 'passenger'
   pickup_order INTEGER,
-  pickup_point GEOGRAPHY(POINT, 4326),
-  pickup_time TIME,
-  PRIMARY KEY (group_id, user_id, day_of_week)
+  pickup_lat REAL,
+  pickup_lng REAL,
+  pickup_time TEXT,
+  UNIQUE(group_id, user_id, day_of_week)
 );
 
--- Spatial indexes
-CREATE INDEX idx_users_home ON users USING GIST(home_location);
-CREATE INDEX idx_users_work ON users USING GIST(work_location);
 CREATE INDEX idx_schedule_week ON schedule_entries(week_start, day_of_week);
 ```
 
