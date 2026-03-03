@@ -67,13 +67,31 @@ export default function ResultsPage() {
   }, []);
 
   const handleSeedDemoUsers = async () => {
-    if (!currentUserId) return;
     setSeeding(true);
     setSeedError(null);
 
     try {
+      let resolvedUserId = currentUserId;
+      if (!resolvedUserId) {
+        const flow = readFlow();
+        const fallbackName = flow.profile?.name ?? "Utilisateur";
+        const fallbackEmail =
+          flow.profile?.email ?? `auto.${Date.now()}@covoiturage.local`;
+        const registration = await trpcClient.user.register.mutate({
+          name: fallbackName,
+          email: fallbackEmail,
+        });
+        resolvedUserId = registration.userId;
+        setCurrentUserId(resolvedUserId);
+      }
+
+      if (!resolvedUserId) {
+        setSeedError("Impossible de créer un utilisateur actif.");
+        return;
+      }
+
       const seed = await trpcClient.user.seedDemoUsers.mutate({
-        userId: currentUserId,
+        userId: resolvedUserId,
         weekStart,
       });
       if (!seed.ok) {
@@ -82,11 +100,11 @@ export default function ResultsPage() {
       }
 
       await trpcClient.matching.triggerMatch.mutate({
-        userId: currentUserId,
+        userId: resolvedUserId,
         weekStart,
       });
       const myGroup = await trpcClient.matching.myGroup.query({
-        userId: currentUserId,
+        userId: resolvedUserId,
         weekStart,
       });
       if (myGroup?.members) {
@@ -189,7 +207,7 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={handleSeedDemoUsers}
-                disabled={seeding || !currentUserId}
+                disabled={seeding}
                 className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 {seeding ? "Création en cours..." : "Créer des covoitureurs de démonstration"}

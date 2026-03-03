@@ -32,7 +32,20 @@ export default function SchedulePage() {
       setSaving(true);
       setError(null);
       try {
-        const resolvedUserId = userId ?? readFlow().profile?.userId;
+        let resolvedUserId = userId ?? readFlow().profile?.userId ?? null;
+        if (!resolvedUserId) {
+          const flow = readFlow();
+          const fallbackName = flow.profile?.name ?? "Utilisateur";
+          const fallbackEmail =
+            flow.profile?.email ?? `auto.${Date.now()}@covoiturage.local`;
+          const registration = await trpcClient.user.register.mutate({
+            name: fallbackName,
+            email: fallbackEmail,
+          });
+          resolvedUserId = registration.userId;
+          setUserId(resolvedUserId);
+        }
+
         if (!resolvedUserId) {
           throw new Error("Aucun utilisateur actif. Recommencez l'inscription.");
         }

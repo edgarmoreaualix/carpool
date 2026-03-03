@@ -85,11 +85,13 @@ export function initSqliteSchema(): void {
 }
 
 function resolveSqlitePath(databaseUrl?: string): string {
-  if (databaseUrl && databaseUrl.startsWith("file:")) {
-    return databaseUrl.replace(/^file:/, "");
+  const candidate = databaseUrl?.trim();
+  if (candidate && candidate.startsWith("file:")) {
+    const raw = candidate.replace(/^file:/, "");
+    return path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw);
   }
-  if (databaseUrl && !databaseUrl.startsWith("file:")) {
-    return databaseUrl;
+  if (candidate && !candidate.startsWith("file:")) {
+    return candidate;
   }
-  return path.resolve(process.cwd(), "../../data/covoiturage.sqlite");
+  return path.resolve(process.cwd(), "data/covoiturage.sqlite");
 }
