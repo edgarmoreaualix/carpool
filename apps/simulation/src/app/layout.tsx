@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Simulation — Corridor Ligné → Nantes",
+  title: "Simulation - Corridor Ligné vers Nantes",
   description:
-    "Simulation de trafic et impact du covoiturage sur le corridor Ligné → Nantes.",
+    "Simulation de trafic et impact du covoiturage sur le corridor Ligné vers Nantes.",
 };
 
 export default function RootLayout({
