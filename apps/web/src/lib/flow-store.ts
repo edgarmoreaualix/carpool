@@ -2,6 +2,7 @@ import type { WeeklySchedule } from "@covoiturage/shared";
 import type { LocationPoint } from "@/lib/onboarding";
 
 export interface UserProfile {
+  userId?: string;
   name?: string;
   email?: string;
   home: LocationPoint;

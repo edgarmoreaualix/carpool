@@ -1,25 +1,109 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DailyPlanTimeline } from "@/components/results/daily-plan-timeline";
 import { GroupSummaryCard } from "@/components/results/group-summary-card";
+import type { DailyPlan, ResultMember } from "@/components/results/types";
 import { WeeklySummary } from "@/components/results/weekly-summary";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { computeHasMatch, readFlow } from "@/lib/flow-store";
-import { DAILY_PLANS, GROUP_MEMBERS, WEEKLY_SUMMARY } from "./mock-data";
+import { trpcClient } from "@/lib/trpc-client";
+import { WEEKLY_SUMMARY } from "./mock-data";
+
+interface GroupMemberRow {
+  userId: string;
+  dayOfWeek: number;
+  role: string;
+  pickupOrder: number | null;
+  pickupTime: string | null;
+  name: string;
+  commune: string;
+}
 
 export default function ResultsPage() {
   const [ready, setReady] = useState(false);
   const [hasSchedule, setHasSchedule] = useState(false);
   const [hasMatch, setHasMatch] = useState(false);
+  const [weekStart, setWeekStart] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [groupRows, setGroupRows] = useState<GroupMemberRow[]>([]);
 
   useEffect(() => {
     const flow = readFlow();
-    setHasSchedule(Boolean(flow.schedule));
-    setHasMatch(computeHasMatch(flow.schedule));
-    setReady(true);
+    const schedule = flow.schedule;
+    const userId = flow.profile?.userId;
+
+    if (schedule) {
+      setWeekStart(schedule.weekStart);
+    }
+
+    setHasSchedule(Boolean(schedule));
+    setHasMatch(computeHasMatch(schedule));
+
+    const load = async () => {
+      if (!userId || !schedule) {
+        setReady(true);
+        return;
+      }
+      try {
+        const myGroup = await trpcClient.matching.myGroup.query({
+          userId,
+          weekStart: schedule.weekStart,
+        });
+        if (myGroup?.members) {
+          setGroupRows(myGroup.members as GroupMemberRow[]);
+          setHasMatch(myGroup.members.length > 0);
+        }
+      } finally {
+        setReady(true);
+      }
+    };
+
+    void load();
   }, []);
+
+  const members = useMemo<ResultMember[]>(() => {
+    const unique = new Map<string, ResultMember>();
+    for (const row of groupRows) {
+      if (!unique.has(row.userId)) {
+        unique.set(row.userId, { id: row.userId, name: row.name, commune: row.commune });
+      }
+    }
+    return Array.from(unique.values());
+  }, [groupRows]);
+
+  const plans = useMemo<DailyPlan[]>(() => {
+    const byDay = new Map<number, GroupMemberRow[]>();
+    for (const row of groupRows) {
+      const current = byDay.get(row.dayOfWeek) ?? [];
+      current.push(row);
+      byDay.set(row.dayOfWeek, current);
+    }
+
+    const dayLabels = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+
+    return Array.from(byDay.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([day, rows]) => {
+        const sorted = [...rows].sort((a, b) => (a.pickupOrder ?? 99) - (b.pickupOrder ?? 99));
+        const driver = sorted.find((row) => row.role === "driver") ?? sorted[0];
+        const departureTime = sorted[0]?.pickupTime ?? "07:30";
+
+        return {
+          dayLabel: dayLabels[day] ?? `Jour ${day}`,
+          driverName: driver?.name ?? "Conducteur non défini",
+          departureTime,
+          arrivalTime: estimateArrival(departureTime, 40),
+          stops: sorted.map((row, index) => ({
+            memberId: row.userId,
+            memberName: row.name,
+            commune: row.commune,
+            pickupTime: row.pickupTime ?? departureTime,
+            order: row.pickupOrder ?? index + 1,
+          })),
+        };
+      });
+  }, [groupRows]);
 
   if (!ready) {
     return <main className="mx-auto w-full max-w-5xl px-4 py-10">Chargement...</main>;
@@ -47,10 +131,10 @@ export default function ResultsPage() {
     <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:space-y-6 sm:py-10">
       <header>
         <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Résultats de matching</h1>
-        <p className="text-muted-foreground">Votre plan covoiturage de la semaine, jour par jour.</p>
+        <p className="text-muted-foreground">Semaine du {weekStart}: votre plan covoiturage de la semaine.</p>
       </header>
 
-      {!hasMatch ? (
+      {!hasMatch || members.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Aucun match trouvé cette semaine</CardTitle>
@@ -65,12 +149,23 @@ export default function ResultsPage() {
       ) : (
         <>
           <div className="grid gap-4 lg:grid-cols-2">
-            <GroupSummaryCard members={GROUP_MEMBERS} />
+            <GroupSummaryCard members={members} />
             <WeeklySummary summary={WEEKLY_SUMMARY} />
           </div>
-          <DailyPlanTimeline plans={DAILY_PLANS} />
+          <DailyPlanTimeline plans={plans} />
         </>
       )}
     </main>
   );
+}
+
+function estimateArrival(departureTime: string, plusMinutes: number): string {
+  const [h, m] = departureTime.split(":").map((part) => Number(part));
+  if (Number.isNaN(h) || Number.isNaN(m)) return departureTime;
+  const total = h * 60 + m + plusMinutes;
+  const hh = Math.floor(total / 60)
+    .toString()
+    .padStart(2, "0");
+  const mm = (total % 60).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
 }

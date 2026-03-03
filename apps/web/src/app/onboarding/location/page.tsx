@@ -11,7 +11,8 @@ import {
   formatCoordinate,
   type LocationPoint,
 } from "@/lib/onboarding";
-import { saveProfile } from "@/lib/flow-store";
+import { readFlow, saveProfile } from "@/lib/flow-store";
+import { trpcClient } from "@/lib/trpc-client";
 
 type Target = "home" | "work";
 
@@ -26,6 +27,8 @@ export default function OnboardingLocationPage() {
   const [work, setWork] = useState<LocationPoint>(DEFAULT_WORK_POINT);
   const [name, setName] = useState("Marie");
   const [email, setEmail] = useState("marie@exemple.fr");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const activeLabel = target === "home" ? "domicile" : "travail";
 
@@ -59,10 +62,31 @@ export default function OnboardingLocationPage() {
 
   const handleContinue = () => {
     if (!canContinue) return;
-    saveProfile({ name, email, home, work });
-    if (typeof window !== "undefined") {
-      window.location.href = "/schedule";
-    }
+    setIsSaving(true);
+    setError(null);
+    const flow = readFlow();
+    const userId = flow.profile?.userId;
+    const persist = async () => {
+      try {
+        if (userId) {
+          await trpcClient.user.updateLocation.mutate({
+            userId,
+            home,
+            work,
+          });
+        }
+        saveProfile({ userId, name, email, home, work });
+        if (typeof window !== "undefined") {
+          window.location.href = "/schedule";
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Impossible d'enregistrer la localisation";
+        setError(message);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+    void persist();
   };
 
   return (
@@ -133,7 +157,10 @@ export default function OnboardingLocationPage() {
             <p className="text-muted-foreground">Travail: {work.commune} ({formatCoordinate(work.lat)}, {formatCoordinate(work.lng)})</p>
           </div>
 
-          <Button className="w-full sm:w-auto" disabled={!canContinue} onClick={handleContinue}>Continuer</Button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button className="w-full sm:w-auto" disabled={!canContinue || isSaving} onClick={handleContinue}>
+            {isSaving ? "Enregistrement..." : "Continuer"}
+          </Button>
         </CardContent>
       </Card>
     </main>

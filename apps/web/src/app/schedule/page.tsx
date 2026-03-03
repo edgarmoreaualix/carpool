@@ -7,14 +7,19 @@ import type { WeeklySchedule } from "@covoiturage/shared";
 import { ScheduleInput } from "@/components/schedule-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { readFlow, saveSchedule } from "@/lib/flow-store";
+import { trpcClient } from "@/lib/trpc-client";
 
 export default function SchedulePage() {
   const [latestSchedule, setLatestSchedule] = useState<WeeklySchedule | null>(null);
   const [profileLabel, setProfileLabel] = useState<string>("Profil en cours");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const flow = readFlow();
     if (flow.profile) {
+      setUserId(flow.profile.userId ?? null);
       setProfileLabel(`${flow.profile.home.commune} -> ${flow.profile.work.commune}`);
     }
     if (flow.schedule) {
@@ -23,8 +28,33 @@ export default function SchedulePage() {
   }, []);
 
   const handleSubmit = (schedule: WeeklySchedule) => {
-    saveSchedule(schedule);
-    setLatestSchedule(schedule);
+    const submit = async () => {
+      setSaving(true);
+      setError(null);
+      try {
+        const resolvedUserId = userId ?? readFlow().profile?.userId;
+        if (!resolvedUserId) {
+          throw new Error("Aucun utilisateur actif. Recommencez l'inscription.");
+        }
+        await trpcClient.schedule.submit.mutate({
+          userId: resolvedUserId,
+          weekStart: schedule.weekStart,
+          entries: schedule.entries,
+        });
+        await trpcClient.matching.triggerMatch.mutate({
+          userId: resolvedUserId,
+          weekStart: schedule.weekStart,
+        });
+        saveSchedule(schedule);
+        setLatestSchedule(schedule);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Impossible d'enregistrer le planning";
+        setError(message);
+      } finally {
+        setSaving(false);
+      }
+    };
+    void submit();
   };
 
   return (
@@ -33,11 +63,13 @@ export default function SchedulePage() {
         <p className="text-sm font-medium uppercase tracking-wide text-primary">Planification</p>
         <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Déclarez vos trajets de la semaine</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Corrdior actif: <strong>{profileLabel}</strong>. Activez vos jours et horaires pour déclencher le matching hebdomadaire.
+          Corridor actif: <strong>{profileLabel}</strong>. Activez vos jours et horaires pour déclencher le matching hebdomadaire.
         </p>
       </section>
 
       <ScheduleInput onSubmit={handleSubmit} />
+      {saving && <p className="text-sm text-muted-foreground">Synchronisation API en cours...</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {latestSchedule && (
         <Card>
