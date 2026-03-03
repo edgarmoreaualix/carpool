@@ -27,11 +27,15 @@ export default function ResultsPage() {
   const [hasMatch, setHasMatch] = useState(false);
   const [weekStart, setWeekStart] = useState<string>(new Date().toISOString().slice(0, 10));
   const [groupRows, setGroupRows] = useState<GroupMemberRow[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   useEffect(() => {
     const flow = readFlow();
     const schedule = flow.schedule;
     const userId = flow.profile?.userId;
+    setCurrentUserId(userId ?? null);
 
     if (schedule) {
       setWeekStart(schedule.weekStart);
@@ -61,6 +65,43 @@ export default function ResultsPage() {
 
     void load();
   }, []);
+
+  const handleSeedDemoUsers = async () => {
+    if (!currentUserId) return;
+    setSeeding(true);
+    setSeedError(null);
+
+    try {
+      const seed = await trpcClient.user.seedDemoUsers.mutate({
+        userId: currentUserId,
+        weekStart,
+      });
+      if (!seed.ok) {
+        setSeedError("Veuillez d'abord enregistrer votre planning.");
+        return;
+      }
+
+      await trpcClient.matching.triggerMatch.mutate({
+        userId: currentUserId,
+        weekStart,
+      });
+      const myGroup = await trpcClient.matching.myGroup.query({
+        userId: currentUserId,
+        weekStart,
+      });
+      if (myGroup?.members) {
+        setGroupRows(myGroup.members as GroupMemberRow[]);
+        setHasMatch(myGroup.members.length > 0);
+      } else {
+        setHasMatch(false);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Échec du seed de démonstration";
+      setSeedError(message);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const members = useMemo<ResultMember[]>(() => {
     const unique = new Map<string, ResultMember>();
@@ -144,6 +185,17 @@ export default function ResultsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Conseil: élargissez votre tolérance à ±20 minutes.</p>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={handleSeedDemoUsers}
+                disabled={seeding || !currentUserId}
+                className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              >
+                {seeding ? "Création en cours..." : "Créer des covoitureurs de démonstration"}
+              </button>
+              {seedError && <p className="mt-2 text-sm text-destructive">{seedError}</p>}
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -160,8 +212,10 @@ export default function ResultsPage() {
 }
 
 function estimateArrival(departureTime: string, plusMinutes: number): string {
-  const [h, m] = departureTime.split(":").map((part) => Number(part));
-  if (Number.isNaN(h) || Number.isNaN(m)) return departureTime;
+  const parts = departureTime.split(":").map((part) => Number(part));
+  const h = parts[0];
+  const m = parts[1];
+  if (h == null || m == null || Number.isNaN(h) || Number.isNaN(m)) return departureTime;
   const total = h * 60 + m + plusMinutes;
   const hh = Math.floor(total / 60)
     .toString()
