@@ -10,6 +10,11 @@ export function projectOnCorridor(
   corridor: GeoJSONLineString
 ): { position: number; distanceFromCorridor: number } {
   const coords = corridor.coordinates;
+
+  if (coords.length < 2) {
+    return { position: 0, distanceFromCorridor: Infinity };
+  }
+
   let bestPosition = 0;
   let bestDistance = Infinity;
 
@@ -17,9 +22,11 @@ export function projectOnCorridor(
   let totalLength = 0;
   const segmentLengths: number[] = [];
   for (let i = 0; i < coords.length - 1; i++) {
+    const curr = coords[i]!;
+    const next = coords[i + 1]!;
     const len = haversineDistance(
-      { lat: coords[i][1], lng: coords[i][0] },
-      { lat: coords[i + 1][1], lng: coords[i + 1][0] }
+      { lat: curr[1], lng: curr[0] },
+      { lat: next[1], lng: next[0] }
     );
     segmentLengths.push(len);
     totalLength += len;
@@ -27,8 +34,12 @@ export function projectOnCorridor(
 
   let cumulativeLength = 0;
   for (let i = 0; i < coords.length - 1; i++) {
-    const a: Point = { lat: coords[i][1], lng: coords[i][0] };
-    const b: Point = { lat: coords[i + 1][1], lng: coords[i + 1][0] };
+    const curr = coords[i]!;
+    const next = coords[i + 1]!;
+    const segLen = segmentLengths[i]!;
+
+    const a: Point = { lat: curr[1], lng: curr[0] };
+    const b: Point = { lat: next[1], lng: next[0] };
 
     const t = projectPointOnSegment(point, a, b);
     const projected: Point = {
@@ -39,10 +50,10 @@ export function projectOnCorridor(
 
     if (dist < bestDistance) {
       bestDistance = dist;
-      bestPosition = (cumulativeLength + t * segmentLengths[i]) / totalLength;
+      bestPosition = (cumulativeLength + t * segLen) / totalLength;
     }
 
-    cumulativeLength += segmentLengths[i];
+    cumulativeLength += segLen;
   }
 
   return { position: bestPosition, distanceFromCorridor: bestDistance };

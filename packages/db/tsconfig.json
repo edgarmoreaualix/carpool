@@ -3,8 +3,5 @@
   "compilerOptions": {
     "outDir": "./dist"
   },
-  "include": ["schema", "seed"],
-  "references": [
-    { "path": "../shared" }
-  ]
+  "include": ["schema", "seed"]
 }

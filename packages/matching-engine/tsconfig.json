@@ -3,9 +3,5 @@
   "compilerOptions": {
     "outDir": "./dist"
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../shared" },
-    { "path": "../geo" }
-  ]
+  "include": ["src"]
 }
