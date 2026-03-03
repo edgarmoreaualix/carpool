@@ -12,5 +12,4 @@
  * 5. pickup.ts   — Pickup point and time calculation
  */
 
-// Will be implemented by backend agent
-export {};
+export { clusterByGeography } from "./cluster";
