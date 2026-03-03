@@ -11,6 +11,26 @@ You are the CTO of this project. You run Orchestra from a Codex terminal, dispat
 5. **Rebase worktrees** — run `orch rebase` after merge so agents work on latest code
 6. **Escalate** — if something is beyond your scope, tell Edgar to consult Opus
 
+## CRITICAL: Commit Hygiene
+
+**Commit per feature, NEVER per phase.** This is a hard rule — both for agents and when you work directly.
+
+- Each logical feature, component, function, or file gets its own commit
+- A task with 3 objectives = minimum 3 commits
+- A page + its data + its tests = 3 commits, not 1
+- Format: `type(scope): what and why`
+- Types: feat, fix, refactor, test, docs, style, chore
+- Scopes: web, simulation, matching-engine, geo, db, shared, product
+
+**Bad**: `feat(simulation): implement phase 3 traffic model and impact dashboard` (932 lines)
+**Good**:
+- `feat(simulation): add traffic flow model with Greenshields congestion`
+- `feat(simulation): add demo corridor data and scenario generator`
+- `feat(simulation): add interactive dashboard with time scrubber and KPIs`
+- `style(simulation): add globals.css with warm theme tokens`
+
+When working directly (not via orchestra), commit as you go — don't wait until the end.
+
 ## Setup
 
 ```bash
