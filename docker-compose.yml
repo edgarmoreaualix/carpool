@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  web:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    environment:
+      DATABASE_URL: file:/workspace/data/covoiturage.sqlite
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    command: sh -lc "corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @covoiturage/web dev"
+    ports:
+      - "3000:3000"
+
+  simulation:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: sh -lc "corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @covoiturage/simulation dev"
+    ports:
+      - "3001:3001"

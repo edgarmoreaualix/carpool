@@ -1,0 +1,12 @@
+[build]
+  base = "."
+  command = "pnpm --filter @covoiturage/web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  DATABASE_URL = "file:./data/covoiturage.sqlite"
+  NEXT_PUBLIC_APP_URL = "https://your-netlify-site.netlify.app"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
