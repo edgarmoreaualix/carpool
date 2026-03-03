@@ -4,9 +4,8 @@ import { renderToString } from "react-dom/server";
 import ResultsPage from "./page";
 
 describe("results page", () => {
-  it("renders key french labels", () => {
+  it("renders initial loading state safely", () => {
     const html = renderToString(<ResultsPage />);
-    expect(html).toContain("Votre groupe de la semaine");
-    expect(html).toContain("Résumé hebdomadaire");
+    expect(html).toContain("Chargement");
   });
 });

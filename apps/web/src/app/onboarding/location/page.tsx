@@ -11,6 +11,7 @@ import {
   formatCoordinate,
   type LocationPoint,
 } from "@/lib/onboarding";
+import { saveProfile } from "@/lib/flow-store";
 
 type Target = "home" | "work";
 
@@ -23,6 +24,8 @@ export default function OnboardingLocationPage() {
   const [target, setTarget] = useState<Target>("home");
   const [home, setHome] = useState<LocationPoint>(DEFAULT_HOME_POINT);
   const [work, setWork] = useState<LocationPoint>(DEFAULT_WORK_POINT);
+  const [name, setName] = useState("Marie");
+  const [email, setEmail] = useState("marie@exemple.fr");
 
   const activeLabel = target === "home" ? "domicile" : "travail";
 
@@ -46,19 +49,21 @@ export default function OnboardingLocationPage() {
 
   const markers = useMemo(
     () => [
-      {
-        id: "home",
-        point: home,
-        color: "var(--primary)",
-      },
-      {
-        id: "work",
-        point: work,
-        color: "var(--accent)",
-      },
+      { id: "home", point: home, color: "var(--primary)" },
+      { id: "work", point: work, color: "var(--accent)" },
     ],
     [home, work],
   );
+
+  const canContinue = home.commune.trim().length > 0 && work.commune.trim().length > 0;
+
+  const handleContinue = () => {
+    if (!canContinue) return;
+    saveProfile({ name, email, home, work });
+    if (typeof window !== "undefined") {
+      window.location.href = "/schedule";
+    }
+  };
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:py-10">
@@ -70,19 +75,22 @@ export default function OnboardingLocationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="name">Prénom</Label>
+              <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant={target === "home" ? "default" : "outline"}
-              onClick={() => setTarget("home")}
-            >
+            <Button type="button" variant={target === "home" ? "default" : "outline"} onClick={() => setTarget("home")}>
               Je place mon domicile
             </Button>
-            <Button
-              type="button"
-              variant={target === "work" ? "default" : "outline"}
-              onClick={() => setTarget("work")}
-            >
+            <Button type="button" variant={target === "work" ? "default" : "outline"} onClick={() => setTarget("work")}>
               Je place mon travail
             </Button>
           </div>
@@ -99,13 +107,7 @@ export default function OnboardingLocationPage() {
                 </linearGradient>
               </defs>
               <rect x="0" y="0" width="100" height="60" fill="transparent" onClick={handleMapClick} />
-              <polyline
-                points="8,8 24,12 40,18 58,30 78,43 92,54"
-                fill="none"
-                stroke="url(#corridor)"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
+              <polyline points="8,8 24,12 40,18 58,30 78,43 92,54" fill="none" stroke="url(#corridor)" strokeWidth="2" strokeLinecap="round" />
               {markers.map((marker) => {
                 const x = ((marker.point.lng - MIN_LNG) / (MAX_LNG - MIN_LNG)) * 100;
                 const y = ((MAX_LAT - marker.point.lat) / (MAX_LAT - MIN_LAT)) * 60;
@@ -117,33 +119,21 @@ export default function OnboardingLocationPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="home-commune">Commune domicile</Label>
-              <Input
-                id="home-commune"
-                value={home.commune}
-                onChange={(event) => setHome((prev) => ({ ...prev, commune: event.target.value }))}
-              />
+              <Input id="home-commune" value={home.commune} onChange={(event) => setHome((prev) => ({ ...prev, commune: event.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="work-commune">Commune travail</Label>
-              <Input
-                id="work-commune"
-                value={work.commune}
-                onChange={(event) => setWork((prev) => ({ ...prev, commune: event.target.value }))}
-              />
+              <Input id="work-commune" value={work.commune} onChange={(event) => setWork((prev) => ({ ...prev, commune: event.target.value }))} />
             </div>
           </div>
 
           <div className="rounded-lg border border-border p-3 text-sm">
             <p className="font-medium">Résumé sélection</p>
-            <p className="text-muted-foreground">
-              Domicile: {home.commune} ({formatCoordinate(home.lat)}, {formatCoordinate(home.lng)})
-            </p>
-            <p className="text-muted-foreground">
-              Travail: {work.commune} ({formatCoordinate(work.lat)}, {formatCoordinate(work.lng)})
-            </p>
+            <p className="text-muted-foreground">Domicile: {home.commune} ({formatCoordinate(home.lat)}, {formatCoordinate(home.lng)})</p>
+            <p className="text-muted-foreground">Travail: {work.commune} ({formatCoordinate(work.lat)}, {formatCoordinate(work.lng)})</p>
           </div>
 
-          <Button className="w-full sm:w-auto">Continuer</Button>
+          <Button className="w-full sm:w-auto" disabled={!canContinue} onClick={handleContinue}>Continuer</Button>
         </CardContent>
       </Card>
     </main>
