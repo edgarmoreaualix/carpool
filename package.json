@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "test": "turbo test",
+    "test": "vitest run --config vitest.config.ts",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "db:push": "pnpm --filter @covoiturage/db push",
@@ -12,6 +12,7 @@
     "db:studio": "pnpm --filter @covoiturage/db studio"
   },
   "devDependencies": {
+    "vitest": "^3.2.4",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   },
