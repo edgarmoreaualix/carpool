@@ -13,3 +13,4 @@
  */
 
 export { clusterByGeography } from "./cluster";
+export { findScheduleCompatibleGroups } from "./schedule";
