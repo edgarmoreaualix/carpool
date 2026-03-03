@@ -1,0 +1,78 @@
+{
+  "id": "ligne-nantes",
+  "name": "Ligné → Nantes",
+  "description": "Rural corridor from Ligné through Saint-Mars-du-Désert and Carquefou to Nantes Centre",
+  "region": "Loire-Atlantique",
+  "department": "44",
+  "totalDistanceKm": 25,
+  "typicalDriveMinutes": { "freeFlow": 28, "peakHour": 45 },
+  "stops": [
+    {
+      "name": "Ligné",
+      "type": "origin",
+      "lat": 47.3556,
+      "lng": -1.3478,
+      "population": 5200,
+      "estimatedCommuters": 1200,
+      "postalCode": "44850"
+    },
+    {
+      "name": "Saint-Mars-du-Désert",
+      "type": "intermediate",
+      "lat": 47.3897,
+      "lng": -1.3892,
+      "population": 4800,
+      "estimatedCommuters": 1100,
+      "postalCode": "44850"
+    },
+    {
+      "name": "Carquefou",
+      "type": "intermediate",
+      "lat": 47.2978,
+      "lng": -1.4919,
+      "population": 20000,
+      "estimatedCommuters": 4500,
+      "postalCode": "44470"
+    },
+    {
+      "name": "Nantes Centre",
+      "type": "destination",
+      "lat": 47.2184,
+      "lng": -1.5536,
+      "population": 320000,
+      "estimatedCommuters": null,
+      "postalCode": "44000"
+    }
+  ],
+  "route": {
+    "type": "LineString",
+    "coordinates": [
+      [-1.3478, 47.3556],
+      [-1.3650, 47.3700],
+      [-1.3892, 47.3897],
+      [-1.4200, 47.3600],
+      [-1.4500, 47.3300],
+      [-1.4919, 47.2978],
+      [-1.5200, 47.2600],
+      [-1.5536, 47.2184]
+    ]
+  },
+  "roadSegments": [
+    { "from": "Ligné", "to": "Saint-Mars-du-Désert", "distanceKm": 7, "roads": ["D39", "D69"], "speedLimitKmh": 80 },
+    { "from": "Saint-Mars-du-Désert", "to": "Carquefou", "distanceKm": 8, "roads": ["D31", "D39"], "speedLimitKmh": 80 },
+    { "from": "Carquefou", "to": "Nantes Centre", "distanceKm": 10, "roads": ["N844", "Périphérique"], "speedLimitKmh": 90 }
+  ],
+  "trafficProfile": {
+    "morningPeak": { "start": "07:00", "end": "09:30", "peakAt": "07:45" },
+    "eveningPeak": { "start": "16:30", "end": "19:00", "peakAt": "17:45" },
+    "departureDistribution": {
+      "06:30-07:00": 0.05,
+      "07:00-07:30": 0.20,
+      "07:30-08:00": 0.35,
+      "08:00-08:30": 0.20,
+      "08:30-09:00": 0.10,
+      "09:00-09:30": 0.05,
+      "10:00+": 0.05
+    }
+  }
+}
