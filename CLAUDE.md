@@ -42,11 +42,12 @@ covoiturage/
 - **Monorepo**: Turborepo for build orchestration
 - **Styling**: Tailwind CSS + shadcn/ui components
 - **Maps**: MapLibre GL JS (open-source, no API key needed for tiles)
-- **Database**: PostgreSQL + PostGIS for geospatial queries
-- **ORM**: Drizzle ORM (type-safe, lightweight)
+- **Database**: SQLite via better-sqlite3 (lightweight, zero-config, file-based)
+- **ORM**: Drizzle ORM (type-safe, lightweight) with `drizzle-orm/better-sqlite3`
 - **API**: tRPC for type-safe client-server communication
 - **Auth**: Better Auth (simple, self-hosted)
 - **State**: Zustand for client state
+- **Hosting**: Netlify (frontend + serverless functions)
 - **Testing**: Vitest for unit, Playwright for e2e
 
 ## Key Design Decisions
